@@ -104,9 +104,9 @@ $(document).ready(function() {
 // Lista de reprodução (substitua pelos nomes reais dos arquivos)
 const playlist = [
   './music/im_real_music.mpeg',
+  './music/jorge_matheus_music.mpeg',
   './music/im_real_music.mpeg',
-  './music/im_real_music.mpeg',
-  './music/im_real_music.mpeg'
+  './music/jorge_matheus_music.mpeg'
 ];
 
 // Inicializa variáveis
