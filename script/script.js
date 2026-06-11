@@ -1,180 +1,242 @@
-$(document).ready(function() {
+// ─────────────────────────────────────────────────────────────────
+//  Me & You — script principal
+// ─────────────────────────────────────────────────────────────────
 
-    closeModalMusic();
-    openModalMusic();
+// ─── Listas de mídia ──────────────────────────────────────────────
 
-    const images = document.querySelectorAll('.carousel-images img');
-    const dots = document.querySelectorAll('.dot');
-    const imageCount = images.length;
-    
-    let currentIndex = 0;
-    
-    // // Atualizar o carrossel para mostrar a imagem correspondente
-    // function updateCarousel() {
-    //   // Mover o carrossel para a imagem atual
-    //   const offset = -currentIndex * 800; // 800px é a largura de cada imagem
-    //   document.querySelector('.carousel-images').style.transform = `translateX(${offset}px)`;
-    
-    //   // Atualizar os dots
-    //   dots.forEach((dot, index) => {
-    //     dot.classList.toggle('active', index === currentIndex);
-    //   });
-    // }
+// Imagens: 1–16 (.jpg) + 18–58 (.jpeg)  |  17.jpg é versão mobile, não entra no carrossel
+// Vídeos : 1–9 (.mp4) exibidos sem som
+function buildMediaList() {
+  const items = [];
 
-    function updateCarousel() {
-      // Obter a largura da imagem dinamicamente
-      const imageWidth = document.querySelector('.carousel-images img').clientWidth;
-    
-      // Mover o carrossel para a imagem atual
-      const offset = -currentIndex * imageWidth;
-      document.querySelector('.carousel-images').style.transform = `translateX(${offset}px)`;
-    
-      // Atualizar os dots
-      dots.forEach((dot, index) => {
-        dot.classList.toggle('active', index === currentIndex);
-      });
-    }
-    
-    // Adicionar um event listener para atualizar o carrossel quando a janela for redimensionada
-    window.addEventListener('resize', updateCarousel);
-    
-    
-    // Avançar para a próxima imagem
-    function nextImage() {
-      currentIndex = (currentIndex + 1) % imageCount; // Rolagem infinita
-      updateCarousel();
-    }
-    
-    // Configurar a rolagem automática
-    let interval = setInterval(nextImage, 5000); // Avança a cada 3 segundos
-    // Adicionar evento de clique nos dots
-    dots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        clearInterval(interval); // Parar a rolagem automática ao clicar
-        currentIndex = parseInt(dot.dataset.index);
-        updateCarousel();
-        interval = setInterval(nextImage, 5000); // Reiniciar a rolagem automática
-      });
-    });
-    
-    // Inicializar o carrossel
-    updateCarousel();
+  for (let i = 1; i <= 16; i++) {
+    items.push({ type: 'image', src: `./imgs/${i}.jpg` });
+  }
+  for (let i = 18; i <= 58; i++) {
+    items.push({ type: 'image', src: `./imgs/${i}.jpeg` });
+  }
+  for (let i = 1; i <= 9; i++) {
+    items.push({ type: 'video', src: `./imgs/${i}.mp4` });
+  }
 
-    // Data fixa
-    const fixedDate = new Date("2022-09-11T00:00:00");
+  return items; // 66 itens
+}
 
-    // Função para atualizar o cronômetro
-    function updateTimer() {
-      const now = new Date(); // Data atual
-      const diff = now - fixedDate; // Diferença em milissegundos
-
-      // Converter a diferença em unidades de tempo
-      const seconds = Math.floor(diff / 1000) % 60;
-      const minutes = Math.floor(diff / (1000 * 60)) % 60;
-      const hours = Math.floor(diff / (1000 * 60 * 60)) % 24;
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24)) % 30;
-      const months = Math.floor(diff / (1000 * 60 * 60 * 24 * 30.44)) % 12;
-      const years = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-
-      // Atualizar o texto no HTML
-      const timerElement = document.getElementById("idtimer");
-      timerElement.innerHTML = `
-        <i class="bi bi-heart-fill"></i> 
-        ${years} ano${years !== 1 ? "s" : ""} 
-        ${months} mês${months !== 1 ? "es" : ""} 
-        ${days} dia${days !== 1 ? "s" : ""} 
-        ${hours} hora${hours !== 1 ? "s" : ""} 
-        ${minutes} minuto${minutes !== 1 ? "s" : ""} 
-        ${seconds} segundo${seconds !== 1 ? "s" : ""} 
-        <i class="bi bi-activity"></i>
-      `;
-    }
-
-    // Atualizar o cronômetro a cada segundo
-    setInterval(updateTimer, 1000);
-
-    // Inicializar o cronômetro na primeira vez
-    updateTimer();
-    
-
-    
-// --------------------------- Music ------------------------------- //
-
-// Lista de reprodução (substitua pelos nomes reais dos arquivos)
-const playlist = [
-  './music/im_real_music.mpeg',
-  './music/jorge_matheus_music.mpeg',
-  './music/im_real_music.mpeg',
-  './music/jorge_matheus_music.mpeg'
+// Músicas detectadas na pasta /music
+const MUSIC_FILES = [
+  './music/1.mpeg',
+  './music/2.mpeg',
+  './music/3.mp4'
 ];
 
-// Inicializa variáveis
-let currentIndexMusic = 0; // Índice da música atual
+// ─── Fisher-Yates Shuffle ──────────────────────────────────────────
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Garante que o primeiro item da nova lista não seja igual ao último da anterior
+function reshuffleAvoiding(arr, lastSrc) {
+  const shuffled = shuffle(arr);
+  if (shuffled.length > 1 && shuffled[0].src === lastSrc) {
+    const swapIdx = Math.floor(Math.random() * (shuffled.length - 1)) + 1;
+    [shuffled[0], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[0]];
+  }
+  return shuffled;
+}
+
+// ─── Carrossel ─────────────────────────────────────────────────────
+const ALL_MEDIA    = buildMediaList();
+const carouselEl   = document.getElementById('carousel');
+const progressFill = document.getElementById('progressFill');
+const slideCounter = document.getElementById('slideCounter');
+
+let mediaPlaylist  = shuffle(ALL_MEDIA);
+let currentSlide   = 0;
+let carouselTimer  = null;
+const SLIDE_DELAY  = 5000;
+
+// Cria um elemento img ou video com a classe e atributos indicados
+function makeMediaEl(type, src, className) {
+  if (type === 'image') {
+    const el = document.createElement('img');
+    el.src     = src;
+    el.alt     = '';
+    el.loading = 'lazy';
+    el.className = className;
+    return el;
+  }
+  const el = document.createElement('video');
+  el.src         = src;
+  el.muted       = true;
+  el.playsInline = true;
+  el.preload     = 'none';
+  el.className   = className;
+  return el;
+}
+
+function buildSlides() {
+  carouselEl.innerHTML = '';
+  mediaPlaylist.forEach((item) => {
+    const div = document.createElement('div');
+    div.className = 'slide';
+    // slide-bg: cobre o container com blur (elimina barras pretas em fotos retrato)
+    div.appendChild(makeMediaEl(item.type, item.src, 'slide-bg'));
+    // slide-main: exibe o conteúdo completo sem corte (object-fit: contain)
+    div.appendChild(makeMediaEl(item.type, item.src, 'slide-main'));
+    carouselEl.appendChild(div);
+  });
+}
+
+function getSlides() {
+  return carouselEl.querySelectorAll('.slide');
+}
+
+function activateSlide(index) {
+  const slides = getSlides();
+
+  if (slides[currentSlide]) {
+    slides[currentSlide].classList.remove('active');
+    slides[currentSlide].querySelectorAll('video').forEach(v => {
+      v.pause();
+      v.currentTime = 0;
+    });
+  }
+
+  currentSlide = index;
+
+  if (slides[currentSlide]) {
+    slides[currentSlide].classList.add('active');
+    slides[currentSlide].querySelectorAll('video').forEach(v => {
+      v.play().catch(() => {});
+    });
+  }
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = mediaPlaylist.length;
+  progressFill.style.width = ((currentSlide + 1) / total * 100) + '%';
+  slideCounter.textContent  = `${currentSlide + 1} / ${total}`;
+}
+
+function nextSlide() {
+  let next = currentSlide + 1;
+
+  if (next >= mediaPlaylist.length) {
+    // Ciclo completo: embaralha novamente evitando repetição consecutiva
+    const lastSrc  = mediaPlaylist[currentSlide].src;
+    mediaPlaylist  = reshuffleAvoiding(ALL_MEDIA, lastSrc);
+    buildSlides();
+    next = 0;
+  }
+
+  activateSlide(next);
+}
+
+function prevSlide() {
+  clearInterval(carouselTimer);
+  activateSlide((currentSlide - 1 + mediaPlaylist.length) % mediaPlaylist.length);
+  startCarouselTimer();
+}
+
+function startCarouselTimer() {
+  clearInterval(carouselTimer);
+  carouselTimer = setInterval(nextSlide, SLIDE_DELAY);
+}
+
+function initCarousel() {
+  buildSlides();
+  activateSlide(0);
+  startCarouselTimer();
+}
+
+initCarousel();
+
+document.getElementById('prevBtn').addEventListener('click', prevSlide);
+document.getElementById('nextBtn').addEventListener('click', () => {
+  clearInterval(carouselTimer);
+  nextSlide();
+  startCarouselTimer();
+});
+
+// ─── Cronômetro ────────────────────────────────────────────────────
+const START_DATE = new Date('2022-09-11T00:00:00');
+const timerEl    = document.getElementById('idtimer');
+
+function updateTimer() {
+  const diff    = Date.now() - START_DATE.getTime();
+  const seconds = Math.floor(diff / 1000)           % 60;
+  const minutes = Math.floor(diff / 60000)          % 60;
+  const hours   = Math.floor(diff / 3600000)        % 24;
+  const days    = Math.floor(diff / 86400000)       % 30;
+  const months  = Math.floor(diff / (86400000 * 30.44)) % 12;
+  const years   = Math.floor(diff / (86400000 * 365.25));
+
+  const v = (n, s, p) =>
+    `<span class="time-value">${n}</span>&nbsp;${n !== 1 ? p : s}`;
+
+  timerEl.innerHTML =
+    `<i class="bi bi-heart-fill heart-icon"></i> ` +
+    `${v(years,   'ano',     'anos')} ` +
+    `${v(months,  'mês',     'meses')} ` +
+    `${v(days,    'dia',     'dias')} ` +
+    `${v(hours,   'hora',    'horas')} ` +
+    `${v(minutes, 'minuto',  'minutos')} ` +
+    `${v(seconds, 'segundo', 'segundos')} ` +
+    `<i class="bi bi-activity"></i>`;
+}
+
+setInterval(updateTimer, 1000);
+updateTimer();
+
+// ─── Música ────────────────────────────────────────────────────────
 const musicPlayer = document.getElementById('musicPlayer');
 musicPlayer.volume = 0.05;
-const playButton = document.getElementById('playButton');
-const pauseButton = document.getElementById('pauseButton');
-const currentSongDisplay = document.getElementById('currentSong');
 
-// Função para atualizar a música atual
-function loadSong(index) {
-  musicPlayer.src = playlist[index];
-  currentSongDisplay.textContent = `Música atual: ${playlist[index].split('/').pop()}`;
+let musicPlaylist = shuffle([...MUSIC_FILES]);
+let musicIndex    = 0;
+
+function playCurrentSong() {
+  musicPlayer.src = musicPlaylist[musicIndex];
+  musicPlayer.play().catch(() => {});
 }
 
-// Função para tocar a música atual
-function playMusic() {
-  musicPlayer.play();
-  playMusicClose();
-}
-
-// Função para pausar a música
-function pauseMusic() {
-  musicPlayer.pause();
-}
-
-// Evento: Trocar para a próxima música automaticamente
 musicPlayer.addEventListener('ended', () => {
-  currentIndexMusic = (currentIndexMusic + 1) % playlist.length; // Passa para a próxima música, reinicia no fim
-  loadSong(currentIndexMusic);
-  playMusic(); // Toca a próxima música
-  
-});
+  musicIndex++;
 
-// Evento: Botão de tocar
-playButton.addEventListener('click', () => {
-  if (musicPlayer.paused && !musicPlayer.src) {
-      loadSong(currentIndexMusic); // Carrega a primeira música
-      playMusic();
+  if (musicIndex >= musicPlaylist.length) {
+    // Ciclo completo: re-embaralha evitando repetição consecutiva
+    const lastSrc = musicPlaylist[musicPlaylist.length - 1];
+    musicPlaylist = shuffle([...MUSIC_FILES]);
+    if (musicPlaylist.length > 1 && musicPlaylist[0] === lastSrc) {
+      const swap = Math.floor(Math.random() * (musicPlaylist.length - 1)) + 1;
+      [musicPlaylist[0], musicPlaylist[swap]] = [musicPlaylist[swap], musicPlaylist[0]];
+    }
+    musicIndex = 0;
   }
-  playMusic();
+
+  playCurrentSong();
 });
 
-
-// --------------------------- Music ------------------------------- //
-
+document.getElementById('playButton').addEventListener('click', () => {
+  playCurrentSong();
+  closeModalMusic();
 });
 
-function closeModalMusic(){
-    $('.ct-modal-play-music').hide();
+// ─── Modal de música ───────────────────────────────────────────────
+function openModalMusic() {
+  document.getElementById('musicModal').classList.add('visible');
 }
 
-function openModalMusic(){
-    $('.ct-modal-play-music').fadeIn('slow');
+function closeModalMusic() {
+  document.getElementById('musicModal').classList.remove('visible');
 }
 
-function playMusicClose(){
-    $('.ct-modal-play-music').fadeOut('slow');
-}
-
-
-
-function updateScreenSize() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  document.getElementById('size').textContent = `${width} x ${height}px`;
-}
-
-window.addEventListener('resize', updateScreenSize);
-updateScreenSize(); // Chama a função ao carregar a página
+// Exibe o modal ao carregar
+openModalMusic();
